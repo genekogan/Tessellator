@@ -1,20 +1,14 @@
 Shape s;
 
 void setup( ) {
-  size(1280, 800);
-  
-  
+  size(1280, 1200);
   
   PVector tl = new PVector(width/2-100, height/2-100);
   PVector tr = new PVector(width/2+150, height/2-100);
   PVector bl = new PVector(width/2-100, height/2+150);
   
   s = new Shape(tl, tr, bl);
-    
-    
-    
   
-
 }
 
 void draw() {
@@ -25,8 +19,8 @@ void draw() {
       int y = r*250;
       pushMatrix();
       translate(x, y);
-      if (c==0 && r==0)
-        s.draw();
+      //if(c==0 && r==0)
+        s.draw(c==0 && r==0, (40+r)%2==1);
       popMatrix();
     }
   }
@@ -50,4 +44,10 @@ void mouseReleased() {
 
 void mouseDragged() {
   s.mouseDragged(mouseX, mouseY);
+}
+
+void keyPressed() {
+  if (key==' '){
+    s.tellme();
+  }
 }

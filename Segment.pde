@@ -10,50 +10,37 @@ class Segment {
   PVector active;
   int selected;
   int activeIdx;
-
+  Segment linked;
+  boolean linkReversed;
+  float mag;
 
   Segment(PVector p1, PVector p2) {
     this.p1 = p1;
     this.p2 = p2;
+    mag = dist(p1.x, p1.y, p2.x, p2.y);
     points = new ArrayList<PVector>();
+    points.add(new PVector(0, 0));
+    points.add(new PVector(mag, 0));
     dragging = false;
-    active = null;
-    activeIdx = -1;
-    selected = -1;
+    linked = null;
+    linkReversed = false;
+    deselect();
   }
-
-  void setPoints(ArrayList<PVector> points) {
-    this.points = points;
+  
+  void link(Segment other, boolean reverse) {
+    linked = other;
+    linkReversed = reverse;
   }
 
   void deselect() {
-  }
-
-  void mouseMoved(float mx, float my) {
-    float minDist = 1e8;
-
-
-    float ang = atan2(p2.y-p1.y, p2.x-p1.x); 
-    //    float mag = dist(p1.x, p1.y, p2.x, p2.y);
-
     active = null;
     activeIdx = -1;
     selected = -1;
-    /*
-    for (int p=0; p<points.size(); p++) {
-      PVector t = points.get(p);
+  }
 
-      float magt = dist(0, 0, t.x, t.y);
-      float angt = atan2(t.y, t.x);
-      float x = p1.x + magt * cos(ang+angt);
-      float y = p1.y + magt * sin(ang+angt);
-      float d = dist(x, y, mx, my);
-      if (d < minDist && d < MIN_MOUSE_DIST) {
-        active = p;
-        minDist = d;
-      }
-    }
-*/
+  float mouseMoved(float mx, float my, float minDist) {
+    float ang = atan2(p2.y-p1.y, p2.x-p1.x); 
+    deselect();
     
     for (int p=0; p<points.size()-1; p++) {
       PVector t1 = points.get(p);
@@ -75,34 +62,34 @@ class Segment {
         if (d < minDist && d < MIN_MOUSE_DIST) {
           minDist = d;
           if (i==0) {
+            deselectAll();
             selected = p;
-            activeIdx = -1;
-            active = null;
           } else if (i==n-1){
+            deselectAll();
             selected = p+1;
-            activeIdx = -1;
-            active = null;
           } else {
-            selected = -1;
+            deselectAll();
             activeIdx = p+1;
             active = t;  
           }
         }
       }
-    }
+    }    
+    return minDist;
   }
 
   void mousePressed(float mx, float my) {
     if (selected != -1) {
       dragging = true;
     } else if (active != null) {
-      points.add(activeIdx, active);
+      insertPoint(activeIdx, active.x, active.y, true);
       selected = activeIdx;
       active = null;
       activeIdx = -1;
-    } else {
-    }
+      dragging = true;
+    } 
   }
+  
   void mouseReleased(float mx, float my) {
     dragging = false;
   }
@@ -114,50 +101,77 @@ class Segment {
       float angt = atan2(my-p1.y, mx-p1.x);
       float x = magt * cos(angt-ang);
       float y = magt * sin(angt-ang);
-      points.get(selected).set(x, y);
+      setPoint(selected, x, y, true);
+    }
+  }
+  
+  void setPoint(int idx, float x, float y, boolean sendLinked) {
+    points.get(idx).set(x, y);
+    if (linked != null && sendLinked) {
+      if (linkReversed) {
+        linked.setPoint(linked.points.size()-1-idx, mag-x, y, false);
+      } else {
+        linked.setPoint(idx, x, y, false);
+      }
+    }
+  }
+  
+  void insertPoint(int idx, float x, float y, boolean sendLinked) {
+    points.add(idx, new PVector(x, y));
+    if (linked != null && sendLinked) {
+      if (linkReversed) {
+        linked.insertPoint(linked.points.size()-idx, mag-x, y, false);
+      } else {
+        linked.insertPoint(idx, x, y, false);
+      }
     }
   }
 
-  void draw() {
+  void tellme() {
+    for (int p=0; p<points.size(); p++) {
+      println(p+" : "+points.get(p).x+", "+points.get(p).y+" ");
+    }
+  }
+
+  void draw(boolean highlight, boolean rev) {
     float ang = atan2(p2.y-p1.y, p2.x-p1.x); 
     float mag = dist(p1.x, p1.y, p2.x, p2.y);
-    pushMatrix();
-    translate(p1.x, p1.y);
-    rotate(ang);
-    //line(0, 0, mag, 0);
-    popMatrix();
 
-
-    stroke(255, 150);
     noFill();
-
-
+    if (highlight) {
+      stroke(255, 225);
+    } else if (rev) {
+      stroke(255, 0, 0, 200);
+    } else {
+      stroke(255, 100);
+    }
+  
     pushMatrix();
     translate(p1.x, p1.y);
     rotate(ang);
     beginShape();
-    vertex(0, 0);
+    vertex(rev ? mag : 0, 0);
     for (int i=0; i<points.size(); i++) {
-      vertex(points.get(i).x, points.get(i).y);
-      ellipse(points.get(i).x, points.get(i).y, 5, 5);
+      vertex(rev ? mag - points.get(i).x : points.get(i).x, points.get(i).y);
+      if (highlight) {
+        //ellipse(rev ? mag - points.get(i).x : points.get(i).x, points.get(i).y, 5, 5);
+      }
     }
-    vertex(mag, 0);
+    vertex(rev ? 0 : mag, 0);
     endShape();
     
-    
-
-    noStroke();
-    
-    fill(255, 255, 0);
-    if (active!=null)
-      ellipse(active.x, active.y, 5, 5);
-      
-    fill(255, 0, 255);
-    if (selected > -1) {
-      ellipse(points.get(selected).x, points.get(selected).y, 5, 5);
+    noStroke();  
+    if (active!=null && highlight) {
+      fill(255, 255, 0);
+      ellipse(rev ? mag - points.get(selected).x : active.x, active.y, 5, 5);
+    }
+    else if (selected>-1 && highlight) {
+      fill(255, 0, 255);
+      ellipse(rev ? mag - points.get(selected).x : points.get(selected).x, points.get(selected).y, 5, 5);
     }
 
-
     popMatrix();
+    
+    
   }
 }

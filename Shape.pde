@@ -5,46 +5,21 @@ class Shape {
   Segment bottom, right;
   
   Shape(PVector tl, PVector tr, PVector bl) {
-    top = new Segment(tl, tr);
-    left = new Segment(bl, tl);
+    
+    top = new Segment(new PVector(tl.x, tl.y), new PVector(tr.x, tr.y));
+    left = new Segment(new PVector(bl.x, bl.y), new PVector(tl.x, tl.y));
     
     PVector br = new PVector(tr.x, bl.y);
-    bottom = new Segment(bl, br);
-    right = new Segment(br, tr);
+    bottom = new Segment(new PVector(bl.x, bl.y), new PVector(br.x, br.y));
+    right = new Segment(new PVector(br.x, br.y), new PVector(tr.x, tr.y));
     
-    
-    ArrayList<PVector> points = new ArrayList<PVector>();
-    points.add(new PVector(10, -20));
-    points.add(new PVector(60, 30));
-    points.add(new PVector(90, -10));
-    points.add(new PVector(120, -20));
-    points.add(new PVector(150, 15));
-    
-    points = new ArrayList<PVector>();
-    points.add(new PVector(0, 0));
-    points.add(new PVector(tr.x-tl.x, 0));
-    
-    top.setPoints(points);
-    bottom.setPoints(points);
-
-
-
-    ArrayList<PVector> points2 = new ArrayList<PVector>();
-    points2.add(new PVector(10, -20));
-    points2.add(new PVector(60, 30));
-    points2.add(new PVector(90, -10));
-    points2.add(new PVector(120, -20));
-    points2.add(new PVector(150, 15));
-    
-    points2 = new ArrayList<PVector>();
-    points2.add(new PVector(0, 0));
-    points2.add(new PVector(br.x-bl.x, 0));
-    
-    left.setPoints(points2);
-    right.setPoints(points2);
-
+    top.link(bottom, true);
+    bottom.link(top, true);
+    left.link(right, true);
+    right.link(left, true);
   }
   
+
   void deselect() {
     top.deselect();
     bottom.deselect();
@@ -52,20 +27,26 @@ class Shape {
     right.deselect();
   }
   
-  void draw() {
-    top.draw();
-    right.draw();
-    bottom.draw();
-    left.draw();
+  void draw(boolean highlight, boolean reversed) {
+    top.draw(highlight, reversed);
+    right.draw(highlight, reversed);
+    bottom.draw(highlight, reversed);
+    left.draw(highlight, reversed);
   }
   
-  
+  void tellme() {
+    println("top");
+    top.tellme();
+    println("bottom");
+    bottom.tellme();
+  }
   
   void mouseMoved(int mx, int my) {
-    top.mouseMoved(mx, my);
-    bottom.mouseMoved(mx, my);
-    left.mouseMoved(mx, my);
-    right.mouseMoved(mx, my);
+    float minDist = 1e8;
+    minDist = top.mouseMoved(mx, my, minDist);
+    minDist = bottom.mouseMoved(mx, my, minDist);
+    minDist = left.mouseMoved(mx, my, minDist);
+    minDist = right.mouseMoved(mx, my, minDist);
   }
   
   void mousePressed(int mx, int my) {
