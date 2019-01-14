@@ -1,30 +1,39 @@
-float MIN_MOUSE_DIST = 20;
-float CORNER_BIAS = 0.5;
-float SEG_DIST = 2.0;
-
 class Segment {
-
+  boolean horizontal;
   PVector p1, p2;
+  ArrayList<PVector> rawPoints;
   ArrayList<PVector> points;
+  ArrayList<PVector> nextPoints;  
   boolean dragging;
   PVector active;
   int selected;
   int activeIdx;
   Segment linked;
   boolean linkReversed;
+  boolean orderReversed;
   float mag;
 
-  Segment(PVector p1, PVector p2) {
+  Segment(PVector p1, PVector p2, boolean orderReversed) {
     this.p1 = p1;
     this.p2 = p2;
+    this.orderReversed = orderReversed;
     mag = dist(p1.x, p1.y, p2.x, p2.y);
+    rawPoints = new ArrayList<PVector>();
     points = new ArrayList<PVector>();
     points.add(new PVector(0, 0));
     points.add(new PVector(mag, 0));
+    nextPoints = new ArrayList<PVector>();
+    nextPoints.add(new PVector(0, 0));
+    nextPoints.add(new PVector(mag, 0));
     dragging = false;
     linked = null;
     linkReversed = false;
+    horizontal = false;    
     deselect();
+  }
+  
+  Segment(PVector p1, PVector p2) {
+    this(p1, p2, false);
   }
   
   void link(Segment other, boolean reverse) {
@@ -32,6 +41,118 @@ class Segment {
     linkReversed = reverse;
   }
 
+  void setHorizontal(boolean horizontal) {
+    this.horizontal = horizontal;
+  }
+
+  void lerpNext(float lerpFactor) {
+    for (int i=0; i<points.size(); i++) {
+      setPoint(i, lerp(points.get(i).x, nextPoints.get(i).x, lerpFactor),
+                  lerp(points.get(i).y, nextPoints.get(i).y, lerpFactor), 
+                  true);
+    }
+  }
+
+  void setPoint(int idx, float x, float y, boolean sendLinked) {
+    setPoint(idx, x, y, sendLinked, false);
+  }
+
+  void setPoint(int idx, float x, float y, boolean sendLinked, boolean isNext) {
+    if (isNext) {
+      nextPoints.get(idx).set(x, y);
+    } else {
+      points.get(idx).set(x, y);
+    }
+    if (linked != null && sendLinked) {
+      if (linkReversed) {
+        linked.setPoint(linked.points.size()-1-idx, mag-x, y, false, isNext);
+      } else {
+        linked.setPoint(idx, x, y, false, isNext);
+      }
+    }
+  }
+  
+  void insertPoint(int idx, float x, float y, boolean sendLinked) {
+    insertPoint(idx, x, y, sendLinked, false);
+  }
+  
+  void insertPoint(int idx, float x, float y, boolean sendLinked, boolean isNext) {
+    if (isNext) {
+      nextPoints.add(idx, new PVector(x, y));
+    } else {
+      points.add(idx, new PVector(x, y));
+    }    
+    if (linked != null && sendLinked) {
+      if (linkReversed) {
+        linked.insertPoint(linked.points.size()-idx, mag-x, y, false, isNext);
+      } else {
+        linked.insertPoint(idx, x, y, false, isNext);
+      }
+    }
+  }
+  
+  void draw(boolean highlight, boolean flipX, boolean flipY) {
+    float ang = atan2(p2.y-p1.y, p2.x-p1.x); 
+    float mag = dist(p1.x, p1.y, p2.x, p2.y);
+    
+    rawPoints.clear();
+    
+    noFill();
+    if (highlight) {
+      stroke(255, 225);
+    } else {
+      stroke(0, 0, 255, 120);
+    }
+  
+    pushMatrix();
+    translate(p1.x, p1.y);
+    rotate(ang);
+    
+    beginShape();
+    for (int i=0; i<points.size(); i++) {
+      if (horizontal) {
+        float x = (flipX&&!flipY)||(flipY&&!flipX) ? mag - points.get(i).x : points.get(i).x;
+        float y = flipY ? -points.get(i).y : points.get(i).y;
+        rawPoints.add(new PVector(modelX(x, y, 0), modelY(x, y, 0)));
+        vertex(x, y);
+      } else {
+        float x = (flipY&&!flipX)||(flipX&&!flipY) ? mag - points.get(i).x : points.get(i).x;
+        float y = flipX ? -points.get(i).y : points.get(i).y;
+        rawPoints.add(new PVector(modelX(x, y, 0), modelY(x, y, 0)));
+        vertex(x, y);
+      }        
+    }
+    endShape();
+    
+    noStroke();  
+    if (active != null && highlight) {
+      fill(255, 255, 0);
+      ellipse(active.x, active.y, 5, 5);
+    }
+    else if (selected>-1 && highlight) {
+      fill(255, 0, 255);
+      if (horizontal) {
+        ellipse((flipX&&!flipY)||(flipY&&!flipX) ? mag - points.get(selected).x : points.get(selected).x,
+                flipY ? -points.get(selected).y : points.get(selected).y, 5, 5);
+      } else {
+        ellipse((flipY&&!flipX)||(flipX&&!flipY) ? mag - points.get(selected).x : points.get(selected).x,
+                flipX ? -points.get(selected).y : points.get(selected).y, 5, 5);
+      }        
+    }
+    
+    popMatrix();
+  }
+  
+  ArrayList<PVector> getVertices() {
+    ArrayList<PVector> returnPts = new ArrayList<PVector>();
+    for (int i=0; i<rawPoints.size(); i++) {
+      int idx = orderReversed ? rawPoints.size()-1-i: i;
+      PVector p = rawPoints.get(idx);
+      returnPts.add(p);
+    }
+    return returnPts;
+  }
+ 
   void deselect() {
     active = null;
     activeIdx = -1;
@@ -105,73 +226,4 @@ class Segment {
     }
   }
   
-  void setPoint(int idx, float x, float y, boolean sendLinked) {
-    points.get(idx).set(x, y);
-    if (linked != null && sendLinked) {
-      if (linkReversed) {
-        linked.setPoint(linked.points.size()-1-idx, mag-x, y, false);
-      } else {
-        linked.setPoint(idx, x, y, false);
-      }
-    }
-  }
-  
-  void insertPoint(int idx, float x, float y, boolean sendLinked) {
-    points.add(idx, new PVector(x, y));
-    if (linked != null && sendLinked) {
-      if (linkReversed) {
-        linked.insertPoint(linked.points.size()-idx, mag-x, y, false);
-      } else {
-        linked.insertPoint(idx, x, y, false);
-      }
-    }
-  }
-
-  void tellme() {
-    for (int p=0; p<points.size(); p++) {
-      println(p+" : "+points.get(p).x+", "+points.get(p).y+" ");
-    }
-  }
-
-  void draw(boolean highlight, boolean rev) {
-    float ang = atan2(p2.y-p1.y, p2.x-p1.x); 
-    float mag = dist(p1.x, p1.y, p2.x, p2.y);
-
-    noFill();
-    if (highlight) {
-      stroke(255, 225);
-    } else if (rev) {
-      stroke(255, 0, 0, 200);
-    } else {
-      stroke(255, 100);
-    }
-  
-    pushMatrix();
-    translate(p1.x, p1.y);
-    rotate(ang);
-    beginShape();
-    vertex(rev ? mag : 0, 0);
-    for (int i=0; i<points.size(); i++) {
-      vertex(rev ? mag - points.get(i).x : points.get(i).x, points.get(i).y);
-      if (highlight) {
-        //ellipse(rev ? mag - points.get(i).x : points.get(i).x, points.get(i).y, 5, 5);
-      }
-    }
-    vertex(rev ? 0 : mag, 0);
-    endShape();
-    
-    noStroke();  
-    if (active!=null && highlight) {
-      fill(255, 255, 0);
-      ellipse(rev ? mag - points.get(selected).x : active.x, active.y, 5, 5);
-    }
-    else if (selected>-1 && highlight) {
-      fill(255, 0, 255);
-      ellipse(rev ? mag - points.get(selected).x : points.get(selected).x, points.get(selected).y, 5, 5);
-    }
-
-    popMatrix();
-    
-    
-  }
 }
