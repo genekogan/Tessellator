@@ -92,6 +92,10 @@ class Segment {
   }
   
   void draw(boolean highlight, boolean flipX, boolean flipY) {
+    draw(highlight, flipX, flipY, false);
+  }
+  
+  void draw(boolean highlight, boolean flipX, boolean flipY, boolean reverseOrder) {
     float ang = atan2(p2.y-p1.y, p2.x-p1.x); 
     float mag = dist(p1.x, p1.y, p2.x, p2.y);
     
@@ -109,7 +113,17 @@ class Segment {
     rotate(ang);
     
     beginShape();
-    for (int i=0; i<points.size(); i++) {
+    
+    int i0 = 0;
+    int i1 = points.size();
+    int di = 1;
+    if (reverseOrder) {
+      i0 = points.size();
+      i1 = 0;
+      di = -1;
+    }
+    
+    for (int i=i0; i<i1; i+=di) {
       if (horizontal) {
         float x = (flipX&&!flipY)||(flipY&&!flipX) ? mag - points.get(i).x : points.get(i).x;
         float y = flipY ? -points.get(i).y : points.get(i).y;

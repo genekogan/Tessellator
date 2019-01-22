@@ -1,15 +1,18 @@
 class BaseShape {
   ArrayList<Segment> segments;
   int w, h;
+  float slide;
   
-  BaseShape(int w, int h) {
+  BaseShape(int w, int h, int slide) {
     segments = new ArrayList<Segment>();
     this.w = w;
     this.h = h;
+    this.slide = slide;
   }
+  BaseShape(int w, int h) {this(w, h, 0);}
   
   PVector getCenter(int c, int r) {
-    return new PVector(c * w, r * h);
+    return new PVector(c * w - r * slide, r * h);
   }
   
   void deselect() {

@@ -24,6 +24,7 @@ class Triangle extends BaseShape {
   
   PVector getCenter(int c, int r) {
     return new PVector(c * w/2 + (r%2==1 ? w/2 : 0), r * h);
+    //return new PVector(c * w*1.2, r * h);
   }
 
   void draw(PVector center, boolean highlight, int c, int r) {    
@@ -36,10 +37,18 @@ class Triangle extends BaseShape {
     translate(center.x, center.y);
     rotate(ang);
     
-    segments.get(0).draw(highlight, flipX, flipY);
-    segments.get(1).draw(highlight, flipX, flipY);
-    segments.get(2).draw(highlight, false, flipY);
-    segments.get(3).draw(highlight, false, flipY);
+    if (!flipX) {
+      segments.get(0).draw(highlight, flipX, flipY);
+      segments.get(1).draw(highlight, flipX, flipY);
+      segments.get(2).draw(highlight, false, flipY);
+      segments.get(3).draw(highlight, false, flipY);
+    } else {
+      segments.get(2).draw(highlight, flipX, flipY);
+      segments.get(3).draw(highlight, flipX, flipY);
+      segments.get(0).draw(highlight, flipX, flipY);
+      segments.get(1).draw(highlight, flipX, flipY);
+      
+    }
     
     popMatrix();
   }

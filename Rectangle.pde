@@ -3,17 +3,21 @@ class Rectangle extends BaseShape {
   boolean reverseY;
   boolean rotate;
   
-  Rectangle(int w, int h, boolean reverseX, boolean reverseY, boolean rotate) {
-    super(w, h);
+  Rectangle(int w, int h, int slide, boolean reverseX, boolean reverseY, boolean rotate) {
+    super(w, h, slide);
     
     this.reverseX = reverseX;
     this.reverseY = reverseY;
     this.rotate = rotate;
     
-    Segment top = new Segment(new PVector(-w/2, -h/2), new PVector(w/2, -h/2));
+    if (rotate & w!=h) {
+      println("Warning: if rotated, w and h must be equal");
+    }
+    
+    Segment top = new Segment(new PVector(-w/2+slide, -h/2), new PVector(w/2+slide, -h/2));
     Segment bottom = new Segment(new PVector(-w/2, h/2), new PVector(w/2, h/2), true);
-    Segment left = new Segment(new PVector(-w/2, -h/2), new PVector(-w/2, h/2), true);
-    Segment right = new Segment(new PVector(w/2, -h/2), new PVector(w/2, h/2));
+    Segment left = new Segment(new PVector(-w/2+slide, -h/2), new PVector(-w/2, h/2), true);
+    Segment right = new Segment(new PVector(w/2+slide, -h/2), new PVector(w/2, h/2));
     
     top.setHorizontal(true);
     bottom.setHorizontal(true);

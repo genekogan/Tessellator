@@ -3,10 +3,12 @@ float CORNER_BIAS = 0.5;
 float SEG_DIST = 2.0;
 
 // TODO
-// - export mask
+// x export mask
+// - fix triangles
+// x numColors
+// x parallelograms
 // - draw mouse points
 //-----------
-// - parallelograms
 // - two complementary shapes (fish/bird)
 // - not forcing corners
 // - save
@@ -23,7 +25,10 @@ class RawShape {
 color[] colors = new color[]{
   color(255, 0, 0), 
   color(0, 255, 0), 
-  color(0, 0, 255)
+  color(0, 0, 255),
+  color(255, 0, 255),
+  color(255, 255, 0),
+  color(0, 255, 255)
 };
 
 BaseShape s;
@@ -35,24 +40,40 @@ ArrayList<RawShape> rawShapes;
 PGraphics pg;
 
 void setup( ) {
-  size(1280, 1200, P3D);////, P3D);  
+  size(1280, 1280, P3D);////, P3D);  
   pg = createGraphics(width, height, P2D);
   
-  w = 100;
-  h = 100;
+  w = 240/2;
+  h = 240/2;
   
-  nc = 1+ceil(width / w);
-  nr = 1+ceil(height / h);
+  nc = 2+2*ceil(width / w);
+  nr = 2+2*ceil(height / h);
   
-  
-  //s = new Hexagon(w, h, 20, false, false);
+  s = new Hexagon(w, h, 20, false, false);
   //s = new Triangle(w, h);
-  s = new Rectangle(w, h, false, false, true);
-  // rct not ordered right
-  
+  //s = new Rectangle(w, h, -20, false, false, false);
+
+
+  // find best active shape
   C = nc/2; 
   R = nr/2;
-
+  active = new PVector();
+  float minDist = 1e8;
+  for (int c=0; c<nc; c++) {
+    for (int r=0; r<nr; r++) {
+      PVector ctr = s.getCenter(c, r);
+      float d = dist(ctr.x, ctr.y, width/2, height/2);
+      if (d < minDist) {
+        minDist = d;
+        C = c;
+        R = r;
+      }
+    }
+  }
+  
+  if (C%2==1) C-=1;
+  if (R%2==1) R-=1;
+  
   active = s.getCenter(C, R);
 }
 
@@ -80,20 +101,54 @@ void makeShapes() {
 void drawShapes() {
   pg.beginDraw();
   pg.clear();
-  pg.background(colors[0]);
+  //pg.background(colors[1]);
+  pg.background(0);
   for (int i=0; i<rawShapes.size(); i++) {
-    int c = int(floor(i/nr));
-    int r = i % nr;
+    int r = int(floor(i/nr));
+    int c = i % nr;
     color clr = colors[(c+r)%2];
+    if (s instanceof Hexagon) {
+      //clr = colors[(r%3 + ((r+c)%2==1?0:0))%3];
+      clr = colors[(c%3 + (r%2==0?1:0))%3];
+    }
+    else if (s instanceof Rectangle || s instanceof Triangle) {
+      int idx = (c%2==1?2:0) + (r%2==1?1:0);
+      int idxR = floor(c/2)%2;
+      idx = (c%2==1?2:0) + (r%2==1?1-idxR:idxR);
+      clr = colors[idx%4];
+    }
     pg.beginShape();
     pg.noStroke();
     pg.fill(clr);
+    //if (true&& r==R && c==C) 
+    {
     for (PVector p : rawShapes.get(i).points) {
       pg.vertex(p.x, p.y);
     }
+    }
     pg.endShape(CLOSE);
+    pg.fill(255);
+    //pg.text(str(r) + ", " + str(c%2) + ", " + str(r%2==1?2:0 + c%2==1?1:0), rawShapes.get(i).points.get(0).x, rawShapes.get(i).points.get(0).y);
   }
   pg.endDraw();
+}
+
+void drawActive() {
+  for (int c=0; c<nc; c++) {
+    for (int r=0; r<nr; r++) {
+      PVector ctr = s.getCenter(c, r);
+      boolean highlighted = (c==C && r==R);
+      pushMatrix();
+      if (s instanceof Rectangle) {
+        ((Rectangle) s).draw(ctr, highlighted, c, r);
+      } else if (s instanceof Triangle) {
+        ((Triangle) s).draw(ctr, highlighted, c, r);
+      } else if (s instanceof Hexagon) {
+        ((Hexagon) s).draw(ctr, highlighted, c, r);
+      }
+      popMatrix();
+    }
+  }
 }
 
 void highlightActive() {
@@ -101,13 +156,14 @@ void highlightActive() {
   stroke(255);
   strokeWeight(3);
   noFill();
-  for (PVector p : rawShapes.get(nr*R+C).points) {
+  for (PVector p : rawShapes.get(nr*C+R).points) {
     vertex(p.x, p.y);
   }
   endShape(CLOSE);
 }
 
 void draw() {
+  background(0);
   makeShapes();
   drawShapes();
   highlightActive();
